@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -8,7 +41,7 @@ exports.sendSMS = sendSMS;
 exports.notifyAdminOfNewIncident = notifyAdminOfNewIncident;
 exports.notifyAgencyOfDispatch = notifyAgencyOfDispatch;
 // Import nodemailer for sending emails
-const nodemailer_1 = __importDefault(require("nodemailer"));
+const nodemailer = __importStar(require("nodemailer"));
 // Import Twilio for sending SMS
 const twilio_1 = __importDefault(require("twilio"));
 // Load environment variables for notification services
@@ -20,7 +53,7 @@ const TWILIO_SID = process.env.TWILIO_SID;
 const TWILIO_TOKEN = process.env.TWILIO_TOKEN;
 const TWILIO_FROM = process.env.TWILIO_FROM;
 // Create nodemailer transporter for email sending
-const emailTransporter = nodemailer_1.default.createTransporter({
+const emailTransporter = nodemailer.createTransport({
     host: EMAIL_HOST,
     port: EMAIL_PORT,
     secure: EMAIL_PORT === 465, // true for 465, false for other ports
@@ -29,8 +62,16 @@ const emailTransporter = nodemailer_1.default.createTransporter({
         pass: EMAIL_PASS,
     },
 });
-// Create Twilio client for SMS sending
-const smsClient = (0, twilio_1.default)(TWILIO_SID, TWILIO_TOKEN);
+// Create Twilio client for SMS sending (only if valid credentials are provided)
+let smsClient = null;
+if (TWILIO_SID && TWILIO_TOKEN && TWILIO_SID.startsWith("AC")) {
+    try {
+        smsClient = (0, twilio_1.default)(TWILIO_SID, TWILIO_TOKEN);
+    }
+    catch (error) {
+        console.warn("Failed to initialize Twilio client:", error);
+    }
+}
 // Mock agency contacts — in production, this would come from a database
 const AGENCY_CONTACTS = {
     "Ghana Fire Service": { email: "fire@kasoa.gov.gh", phone: "+233501234567" },
@@ -61,7 +102,7 @@ async function sendEmail(to, subject, text) {
 }
 // Send an SMS notification
 async function sendSMS(to, message) {
-    if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
+    if (!smsClient || !TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
         console.warn("Twilio credentials not configured, skipping SMS notification");
         return;
     }

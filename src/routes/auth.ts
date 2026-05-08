@@ -5,7 +5,11 @@ import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 
 // Import jsonwebtoken to generate JWT tokens after successful authentication
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
+
+// Load JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || "7d") as jwt.SignOptions["expiresIn"];
 
 // Import the shared database connection pool
 import pool from "../db";
@@ -75,14 +79,18 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
     // Get the newly created user from the query result
     const user = result.rows[0];
 
+    // Ensure the JWT secret is configured
+    if (!JWT_SECRET) {
+      console.error("JWT_SECRET is not configured");
+      res.status(500).json({ error: "Server configuration error" });
+      return;
+    }
+
     // Generate a JWT token containing the user's ID, role, and email
     const token = jwt.sign(
-      // Payload embedded in the token — used by the auth middleware
       { userId: user.id, role: user.role, email: user.email },
-      // Secret key from environment variables
-      process.env.JWT_SECRET as string,
-      // Token expires after 7 days by default
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
     );
 
     // Respond with 201 Created, the JWT token, and the user's profile
@@ -144,11 +152,18 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Ensure the JWT secret is configured
+    if (!JWT_SECRET) {
+      console.error("JWT_SECRET is not configured");
+      res.status(500).json({ error: "Server configuration error" });
+      return;
+    }
+
     // Generate a JWT token with the user's ID, role, and email
     const token = jwt.sign(
       { userId: user.id, role: user.role, email: user.email },
-      process.env.JWT_SECRET as string,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
     );
 
     // Respond with the token and the user's profile data

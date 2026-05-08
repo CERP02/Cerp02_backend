@@ -1,3 +1,6 @@
+// Import Router and Response from Express
+import { Router, Response } from "express";
+
 // Import the notification utilities
 import { notifyAdminOfNewIncident, notifyAgencyOfDispatch } from "../utils/notifications";
 

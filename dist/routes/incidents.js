@@ -3,6 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// Import Router and Response from Express
+const express_1 = require("express");
 // Import the notification utilities
 const notifications_1 = require("../utils/notifications");
 // Import the database connection pool to run SQL queries
@@ -10,7 +12,7 @@ const db_1 = __importDefault(require("../db"));
 // Import the auth middleware functions for protecting routes
 const auth_1 = require("../middleware/auth");
 // Create a new Express Router instance for incident-related routes
-const router = Router();
+const router = (0, express_1.Router)();
 // ── GET /incidents ──────────────────────────────────────────────────────────
 // Returns a filtered, paginated list of incidents from the database
 // This is a public endpoint — no authentication required to view incidents

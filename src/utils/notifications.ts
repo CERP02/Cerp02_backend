@@ -1,5 +1,5 @@
 // Import nodemailer for sending emails
-import nodemailer from "nodemailer";
+import * as nodemailer from "nodemailer";
 
 // Import Twilio for sending SMS
 import twilio from "twilio";
@@ -14,7 +14,7 @@ const TWILIO_TOKEN = process.env.TWILIO_TOKEN;
 const TWILIO_FROM = process.env.TWILIO_FROM;
 
 // Create nodemailer transporter for email sending
-const emailTransporter = nodemailer.createTransporter({
+const emailTransporter = nodemailer.createTransport({
   host: EMAIL_HOST,
   port: EMAIL_PORT,
   secure: EMAIL_PORT === 465, // true for 465, false for other ports
@@ -24,8 +24,15 @@ const emailTransporter = nodemailer.createTransporter({
   },
 });
 
-// Create Twilio client for SMS sending
-const smsClient = twilio(TWILIO_SID, TWILIO_TOKEN);
+// Create Twilio client for SMS sending (only if valid credentials are provided)
+let smsClient: any = null;
+if (TWILIO_SID && TWILIO_TOKEN && TWILIO_SID.startsWith("AC")) {
+  try {
+    smsClient = twilio(TWILIO_SID, TWILIO_TOKEN);
+  } catch (error) {
+    console.warn("Failed to initialize Twilio client:", error);
+  }
+}
 
 // Mock agency contacts — in production, this would come from a database
 const AGENCY_CONTACTS: Record<string, { email: string; phone: string }> = {
@@ -60,7 +67,7 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
 
 // Send an SMS notification
 export async function sendSMS(to: string, message: string): Promise<void> {
-  if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
+  if (!smsClient || !TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
     console.warn("Twilio credentials not configured, skipping SMS notification");
     return;
   }

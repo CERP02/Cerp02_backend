@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -8,7 +41,10 @@ const express_1 = require("express");
 // Import bcryptjs to hash passwords before storing and to compare passwords on login
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 // Import jsonwebtoken to generate JWT tokens after successful authentication
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const jwt = __importStar(require("jsonwebtoken"));
+// Load JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || "7d");
 // Import the shared database connection pool
 const db_1 = __importDefault(require("../db"));
 // Import the auth middleware and AuthRequest type for the /me route
@@ -57,14 +93,14 @@ router.post("/register", async (req, res) => {
         [name, email.toLowerCase(), password_hash, role, region || null]);
         // Get the newly created user from the query result
         const user = result.rows[0];
+        // Ensure the JWT secret is configured
+        if (!JWT_SECRET) {
+            console.error("JWT_SECRET is not configured");
+            res.status(500).json({ error: "Server configuration error" });
+            return;
+        }
         // Generate a JWT token containing the user's ID, role, and email
-        const token = jsonwebtoken_1.default.sign(
-        // Payload embedded in the token — used by the auth middleware
-        { userId: user.id, role: user.role, email: user.email }, 
-        // Secret key from environment variables
-        process.env.JWT_SECRET, 
-        // Token expires after 7 days by default
-        { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
+        const token = jwt.sign({ userId: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         // Respond with 201 Created, the JWT token, and the user's profile
         res.status(201).json({
             message: "Account created successfully",
@@ -115,8 +151,14 @@ router.post("/login", async (req, res) => {
             res.status(401).json({ error: "Invalid email or password" });
             return;
         }
+        // Ensure the JWT secret is configured
+        if (!JWT_SECRET) {
+            console.error("JWT_SECRET is not configured");
+            res.status(500).json({ error: "Server configuration error" });
+            return;
+        }
         // Generate a JWT token with the user's ID, role, and email
-        const token = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role, email: user.email }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
+        const token = jwt.sign({ userId: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         // Respond with the token and the user's profile data
         res.json({
             message: "Login successful",
