@@ -1,5 +1,5 @@
-// Import Router and types from Express for defining route handlers
-import { Router, Response } from "express";
+// Import the notification utilities
+import { notifyAdminOfNewIncident, notifyAgencyOfDispatch } from "../utils/notifications";
 
 // Import the database connection pool to run SQL queries
 import pool from "../db";
@@ -199,6 +199,11 @@ router.post("/", requireAuth, async (req: AuthRequest, res: Response): Promise<v
       ]
     );
 
+    // Send notification to admin about the new incident
+    notifyAdminOfNewIncident(result.rows[0]).catch((err) =>
+      console.error("Failed to notify admin:", err)
+    );
+
     // Respond with 201 Created and the full incident record
     res.status(201).json({
       message: "Incident reported successfully to the Kasoa Command Center",
@@ -354,6 +359,11 @@ router.patch(
           ]
         );
       }
+
+      // Send notification to the assigned agency
+      notifyAgencyOfDispatch(result.rows[0], assigned_agency).catch((err) =>
+        console.error("Failed to notify agency:", err)
+      );
 
       // Return the updated incident
       res.json({
