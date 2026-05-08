@@ -1,11 +1,14 @@
+// Import dotenv to load environment variables from the .env file
+import dotenv from "dotenv";
+
+// Load environment variables from the .env file into process.env
+dotenv.config();
+
 // Import the Express framework for building the HTTP server
 import express from "express";
 
 // Import the cors middleware to allow the Next.js frontend to call this API
 import cors from "cors";
-
-// Import dotenv to load environment variables from the .env file
-import dotenv from "dotenv";
 
 // Import the auth route handlers (register, login, me)
 import authRoutes from "./routes/auth";
@@ -15,9 +18,6 @@ import incidentRoutes from "./routes/incidents";
 
 // Import the alert route handlers (create, list, delete)
 import alertRoutes from "./routes/alerts";
-
-// Load environment variables from the .env file into process.env
-dotenv.config();
 
 // Create the Express application instance
 const app = express();

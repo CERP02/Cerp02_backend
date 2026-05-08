@@ -116,16 +116,19 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
 // ── POST /auth/login ────────────────────────────────────────────────────────
 // Authenticates an existing user and returns a JWT token
 router.post("/login", async (req: Request, res: Response): Promise<void> => {
-  // Destructure email and password from the request body
-  const { email, password } = req.body;
-
-  // Validate that both fields are present
-  if (!email || !password) {
-    res.status(400).json({ error: "Email and password are required" });
-    return;
-  }
-
   try {
+    console.log("Login request received:", { body: req.body, headers: req.headers });
+
+    // Destructure email and password from the request body
+    const { email, password } = req.body;
+
+    // Validate that both fields are present and are strings
+    if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+      console.log("Invalid request body:", { email, password });
+      res.status(400).json({ error: "Email and password are required and must be strings" });
+      return;
+    }
+
     // Look up the user by their email address
     const result = await pool.query(
       "SELECT * FROM users WHERE email = $1",

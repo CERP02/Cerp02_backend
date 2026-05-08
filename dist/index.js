@@ -3,20 +3,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// Import dotenv to load environment variables from the .env file
+const dotenv_1 = __importDefault(require("dotenv"));
+// Load environment variables from the .env file into process.env
+dotenv_1.default.config();
 // Import the Express framework for building the HTTP server
 const express_1 = __importDefault(require("express"));
 // Import the cors middleware to allow the Next.js frontend to call this API
 const cors_1 = __importDefault(require("cors"));
-// Import dotenv to load environment variables from the .env file
-const dotenv_1 = __importDefault(require("dotenv"));
 // Import the auth route handlers (register, login, me)
 const auth_1 = __importDefault(require("./routes/auth"));
 // Import the incident route handlers (CRUD + dispatch)
 const incidents_1 = __importDefault(require("./routes/incidents"));
 // Import the alert route handlers (create, list, delete)
 const alerts_1 = __importDefault(require("./routes/alerts"));
-// Load environment variables from the .env file into process.env
-dotenv_1.default.config();
 // Create the Express application instance
 const app = (0, express_1.default)();
 // Read the port from the environment variable, defaulting to 4000 if not set
