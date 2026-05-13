@@ -1,22 +1,31 @@
-// IncidentType restricts incident categories to the three types CERP handles
+// IssueType restricts community issue categories to the ten types CERP handles
 // These match the CHECK constraint in the incidents table in schema.sql
-export type IncidentType = "flood" | "fire" | "accident";
+export type IssueType =
+  | "traffic_congestion"
+  | "burst_water_pipe"
+  | "electrical_fault"
+  | "weak_bridge"
+  | "pothole_bad_road"
+  | "illegal_dumping"
+  | "streetlight_outage"
+  | "open_manhole"
+  | "noise_complaint"
+  | "other";
 
-// SeverityLevel represents how critical an incident is rated by the admin
-// These match the CHECK constraint in the incidents table
+// SeverityLevel represents how urgent a community issue is rated by the admin
 export type SeverityLevel = "low" | "moderate" | "critical";
 
-// IncidentStatus tracks which stage of the Kasoa dispatch workflow the incident is in
-// These match the CHECK constraint in the incidents table
-export type IncidentStatus = "new" | "dispatched" | "resolved";
+// IssueStatus tracks which stage of the resolution workflow the issue is in
+export type IssueStatus = "new" | "assigned" | "in_progress" | "resolved";
 
 // UserRole controls what a user is allowed to do on the platform
-// citizen: can report incidents and receive alerts
-// responder: can view and update incident status
-// admin: full access to dispatch, alerts, and the command center
-export type UserRole = "citizen" | "responder" | "admin";
+// user: can report community issues and receive notifications
+// responder: can view and update issue status on behalf of agencies
+// admin: full access to agency assignment, notifications, and the command center
+// superadmin: management of users (admins/responders) + all admin capabilities
+export type UserRole = "user" | "responder" | "admin" | "superadmin";
 
-// AlertChannel defines the three delivery methods for broadcasting community alerts
+// AlertChannel defines the three delivery methods for broadcasting community notifications
 export type AlertChannel = "sms" | "push" | "web";
 
 // User represents a row in the users table in the database
@@ -37,13 +46,13 @@ export interface User {
   created_at: Date;
 }
 
-// Incident represents a row in the incidents table in the database
+// Incident represents a community issue reported by a citizen
 export interface Incident {
   // UUID primary key
   id: string;
-  // Category of the emergency
-  type: IncidentType;
-  // Free-text description of what is happening
+  // Category of the community issue
+  type: IssueType;
+  // Free-text description of the issue
   description: string;
   // Address or landmark in the Kasoa community
   location_text: string;
@@ -51,50 +60,49 @@ export interface Incident {
   latitude: number | null;
   // GPS longitude — null if the citizen declined to share location
   longitude: number | null;
-  // The specific Kasoa community town where the incident occurred
+  // The specific Kasoa community town where the issue was observed
   region: string;
-  // How critical the incident has been rated
+  // How urgent the issue has been rated
   severity: SeverityLevel;
-  // Current stage in the dispatch workflow
-  status: IncidentStatus;
-  // Name of the Kasoa agency assigned to respond
+  // Current stage in the resolution workflow
+  status: IssueStatus;
+  // Name of the agency assigned to handle the issue
   assigned_agency: string | null;
   // UUID of the user who filed the report
   reported_by: string | null;
   // URLs of photos or videos uploaded with the report
   media_urls: string[];
-  // When the incident was first reported
+  // When the issue was first reported
   created_at: Date;
-  // When the incident record was last modified
+  // When the issue record was last modified
   updated_at: Date;
 }
 
-// Alert represents a row in the alerts table — a community broadcast message
+// Alert represents a community broadcast notification
 export interface Alert {
   // UUID primary key
   id: string;
   // Short notification title
   title: string;
-  // Full alert message body
+  // Full notification message body
   message: string;
-  // Which Kasoa town was targeted — "All Kasoa Towns" for community-wide alerts
+  // Which Kasoa town was targeted
   target_region: string;
   // Optional geo-fence radius in kilometres
   radius_km: number | null;
   // Array of delivery channels used
   channels: AlertChannel[];
-  // UUID of the admin who broadcast this alert
+  // UUID of the admin who broadcast this notification
   issued_by: string;
-  // When the alert was sent
+  // When the notification was sent
   created_at: Date;
 }
 
-// ResponseLog represents a row in the response_logs table
-// Every status change and admin action is recorded here for audit purposes
+// ResponseLog tracks every action taken on a community issue for audit
 export interface ResponseLog {
   // UUID primary key
   id: string;
-  // Which incident this log entry relates to
+  // Which community issue this log entry relates to
   incident_id: string;
   // Which responder or admin performed this action
   responder_id: string;
@@ -105,7 +113,6 @@ export interface ResponseLog {
 }
 
 // JwtPayload defines the data embedded inside each JWT token
-// This is decoded by the auth middleware on every protected request
 export interface JwtPayload {
   // UUID of the logged-in user
   userId: string;

@@ -35,6 +35,7 @@ export function requireAuth(
     // Verify the token using the JWT_SECRET from the environment variables
     // If the token is invalid or expired, jwt.verify will throw an error
     const decoded = jwt.verify(
+      // The JWT token string to verify
       token,
       // The secret key used to sign and verify tokens
       process.env.JWT_SECRET as string
@@ -60,6 +61,7 @@ export function requireRole(...roles: UserRole[]) {
     if (!req.user) {
       // Send a 401 Unauthorized response
       res.status(401).json({ error: "Not authenticated" });
+      // Stop execution
       return;
     }
 
@@ -67,8 +69,10 @@ export function requireRole(...roles: UserRole[]) {
     if (!roles.includes(req.user.role)) {
       // Send a 403 Forbidden response explaining which role is needed
       res.status(403).json({
+        // List the required roles in the error message
         error: `Access denied. Required role: ${roles.join(" or ")}`,
       });
+      // Stop execution
       return;
     }
 

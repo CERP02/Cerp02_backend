@@ -2,7 +2,7 @@
 import { Pool } from "pg";
 
 // Import dotenv to load environment variables from the .env file
-import dotenv from "dotenv";
+const dotenv = require("dotenv");
 
 // Load the .env file so process.env has DATABASE_URL and other config values
 dotenv.config();
@@ -16,12 +16,14 @@ const pool = new Pool({
 
 // Log a success message to the terminal whenever a new connection is established
 pool.on("connect", () => {
-  console.log("✅ PostgreSQL connected to CERP database");
+  // Confirm the database connection is working
+  console.log("✅ PostgreSQL connected to CERP community issue database");
 });
 
 // If a connection error occurs, log the error and terminate the process
 // The process should restart via a process manager in production
 pool.on("error", (err) => {
+  // Log the connection error details
   console.error("❌ PostgreSQL connection error:", err.message);
   // Exit with code 1 to signal an abnormal termination
   process.exit(1);

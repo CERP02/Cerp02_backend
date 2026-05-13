@@ -30,7 +30,9 @@ next) {
     try {
         // Verify the token using the JWT_SECRET from the environment variables
         // If the token is invalid or expired, jwt.verify will throw an error
-        const decoded = jsonwebtoken_1.default.verify(token, 
+        const decoded = jsonwebtoken_1.default.verify(
+        // The JWT token string to verify
+        token, 
         // The secret key used to sign and verify tokens
         process.env.JWT_SECRET);
         // Attach the decoded payload to the request object so route handlers can access user info
@@ -52,14 +54,17 @@ function requireRole(...roles) {
         if (!req.user) {
             // Send a 401 Unauthorized response
             res.status(401).json({ error: "Not authenticated" });
+            // Stop execution
             return;
         }
         // Check if the user's role is in the list of allowed roles
         if (!roles.includes(req.user.role)) {
             // Send a 403 Forbidden response explaining which role is needed
             res.status(403).json({
+                // List the required roles in the error message
                 error: `Access denied. Required role: ${roles.join(" or ")}`,
             });
+            // Stop execution
             return;
         }
         // The user has one of the required roles — pass control to the route handler

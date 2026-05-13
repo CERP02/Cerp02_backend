@@ -13,11 +13,17 @@ import cors from "cors";
 // Import the auth route handlers (register, login, me)
 import authRoutes from "./routes/auth";
 
-// Import the incident route handlers (CRUD + dispatch)
+// Import the community issue route handlers (CRUD + agency assignment)
 import incidentRoutes from "./routes/incidents";
 
-// Import the alert route handlers (create, list, delete)
+// Import the notification route handlers (create, list, delete)
 import alertRoutes from "./routes/alerts";
+// Import the new superadmin and settings route modules
+import superadminRoutes from "./routes/superadmin";
+import settingsRoutes from "./routes/settings";
+
+// Import the user management route handlers (superadmin only)
+import userRoutes from "./routes/users";
 
 // Create the Express application instance
 const app = express();
@@ -26,6 +32,11 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // ── Middleware ───────────────────────────────────────────────────────────────
+
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 // Configure CORS to allow requests from the Next.js frontend origin
 app.use(cors({
@@ -48,14 +59,24 @@ app.use(express.urlencoded({ extended: true }));
 // Handles: POST /auth/register, POST /auth/login, GET /auth/me
 app.use("/auth", authRoutes);
 
-// Mount the incident routes at /incidents
+// Mount the superadmin management routes
+app.use("/superadmin", superadminRoutes);
+
+// Mount the platform settings routes
+app.use("/settings", settingsRoutes);
+
+// Mount the community issue routes at /incidents
 // Handles: GET /incidents, GET /incidents/:id, POST /incidents,
 //          PATCH /incidents/:id, PATCH /incidents/:id/dispatch, DELETE /incidents/:id
 app.use("/incidents", incidentRoutes);
 
-// Mount the alert routes at /alerts
+// Mount the notification routes at /alerts
 // Handles: GET /alerts, GET /alerts/:id, POST /alerts, DELETE /alerts/:id
 app.use("/alerts", alertRoutes);
+
+// Mount the user management routes at /users
+// Handles: GET /users, PATCH /users/:id, DELETE /users/:id
+app.use("/users", userRoutes);
 
 // ── Health Check ─────────────────────────────────────────────────────────────
 
@@ -64,8 +85,11 @@ app.use("/alerts", alertRoutes);
 app.get("/health", (_req, res) => {
   // Return a JSON object with the server status and current timestamp
   res.json({
+    // Indicate the server is running normally
     status: "ok",
-    service: "CERP API — Kasoa Community Emergency Reporting Platform",
+    // Identify this service as the Community Issue Reporting Platform API
+    service: "CERP API — Kasoa Community Issue Reporting Platform",
+    // Include the current server time for debugging
     timestamp: new Date().toISOString(),
   });
 });
@@ -82,8 +106,6 @@ app.use((_req, res) => {
 
 // Express calls this handler whenever next(err) is called or an error is thrown
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  // Log the error to the terminal for server-side debugging
-  console.error("Unhandled error:", err.message);
   // Return a generic 500 error — never expose internal error details to the client
   res.status(500).json({ error: "Internal server error" });
 });

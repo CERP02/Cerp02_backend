@@ -1,13 +1,13 @@
--- CERP — Community Emergency Reporting Platform
--- Database schema for the Kasoa community emergency system
+-- CERP — Community Issue Reporting Platform
+-- Database schema for the Kasoa community issue reporting system
 -- Run once: psql -U postgres -d cerp -f src/schema.sql
 
 -- Enable the pgcrypto extension so we can use gen_random_uuid() for primary keys
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ── USERS TABLE ──────────────────────────────────────────────────────────────
--- Stores all platform users: citizens who report incidents, responders who
--- attend scenes, and admins who manage the Kasoa command center
+-- Stores all platform users: citizens who report community issues, responders who
+-- handle assigned tasks, and admins who manage the Kasoa command center
 CREATE TABLE IF NOT EXISTS users (
   -- Unique identifier generated automatically for each user
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -18,11 +18,11 @@ CREATE TABLE IF NOT EXISTS users (
   -- Bcrypt hash of the user's password — the plaintext is never stored
   password_hash TEXT NOT NULL,
   -- Role determines what the user can do on the platform
-  -- citizen: can report incidents and receive alerts
-  -- responder: can view and update incident status
-  -- admin: full access including dispatch and alert broadcasting
-  role          VARCHAR(20) NOT NULL DEFAULT 'citizen'
-                  CHECK (role IN ('citizen', 'responder', 'admin')),
+  -- user: can report community issues and receive notifications
+  -- responder: can view and update issue status on behalf of agencies
+  -- admin: full access including agency assignment and notification broadcasting
+  role          VARCHAR(20) NOT NULL DEFAULT 'user'
+                  CHECK (role IN ('user', 'responder', 'admin', 'superadmin')),
   -- The specific Kasoa community town the user is based in
   region        VARCHAR(100),
   -- Timestamp of when the user account was created
@@ -30,38 +30,49 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- ── INCIDENTS TABLE ───────────────────────────────────────────────────────────
--- Stores every emergency incident reported by citizens in the Kasoa community
+-- Stores every community issue reported by citizens in the Kasoa community
 CREATE TABLE IF NOT EXISTS incidents (
-  -- Unique identifier generated automatically for each incident
+  -- Unique identifier generated automatically for each issue report
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  -- Category of the emergency — one of the three types CERP handles
-  type             VARCHAR(20) NOT NULL
-                     CHECK (type IN ('flood', 'fire', 'accident')),
-  -- Free-text description of what is happening at the scene
+  -- Category of the community issue — one of the ten types CERP handles
+  type             VARCHAR(30) NOT NULL
+                     CHECK (type IN (
+                       'traffic_congestion',
+                       'burst_water_pipe',
+                       'electrical_fault',
+                       'weak_bridge',
+                       'pothole_bad_road',
+                       'illegal_dumping',
+                       'streetlight_outage',
+                       'open_manhole',
+                       'noise_complaint',
+                       'other'
+                     )),
+  -- Free-text description of the community issue being reported
   description      TEXT NOT NULL,
-  -- Street address or landmark where the incident occurred in Kasoa
+  -- Street address or landmark where the issue was observed in Kasoa
   location_text    VARCHAR(255) NOT NULL,
-  -- GPS latitude coordinate — allows the incident to be placed on the map
+  -- GPS latitude coordinate — allows the issue to be placed on the map
   latitude         NUMERIC(10, 7),
-  -- GPS longitude coordinate — allows the incident to be placed on the map
+  -- GPS longitude coordinate — allows the issue to be placed on the map
   longitude        NUMERIC(10, 7),
-  -- The specific Kasoa community town where the incident occurred
+  -- The specific Kasoa community town where the issue was observed
   region           VARCHAR(100) NOT NULL,
-  -- How critical the incident is — set by the admin after review
+  -- How urgent the issue is — set by the admin after review
   severity         VARCHAR(20) NOT NULL DEFAULT 'low'
                      CHECK (severity IN ('low', 'moderate', 'critical')),
-  -- Current stage in the dispatch workflow
+  -- Current stage in the issue resolution workflow
   status           VARCHAR(20) NOT NULL DEFAULT 'new'
-                     CHECK (status IN ('new', 'dispatched', 'resolved')),
-  -- Name of the Kasoa emergency agency assigned to respond
+                     CHECK (status IN ('new', 'assigned', 'in_progress', 'resolved')),
+  -- Name of the Kasoa-area agency assigned to handle this issue
   assigned_agency  VARCHAR(120),
   -- Foreign key linking to the user who submitted the report
   reported_by      UUID REFERENCES users(id) ON DELETE SET NULL,
   -- Array of URLs pointing to photos or videos uploaded with the report
   media_urls       TEXT[] DEFAULT '{}',
-  -- Timestamp of when the incident was first reported
+  -- Timestamp of when the issue was first reported
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  -- Timestamp of the most recent update to this incident record
+  -- Timestamp of the most recent update to this issue record
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -83,52 +94,52 @@ CREATE TRIGGER incidents_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── ALERTS TABLE ──────────────────────────────────────────────────────────────
--- Stores broadcast alerts sent by admins to Kasoa community members
+-- Stores broadcast notifications sent by admins to Kasoa community members
 CREATE TABLE IF NOT EXISTS alerts (
-  -- Unique identifier generated automatically for each alert
+  -- Unique identifier generated automatically for each notification
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   -- Short title displayed in the push notification or SMS header
   title          VARCHAR(255) NOT NULL,
-  -- Full message body of the alert
+  -- Full message body of the notification
   message        TEXT NOT NULL,
-  -- The Kasoa community town targeted by this alert
-  -- "All Kasoa Towns" means the alert goes to the entire community
+  -- The Kasoa community town targeted by this notification
+  -- "All Kasoa Towns" means the notification goes to the entire community
   target_region  VARCHAR(100) NOT NULL DEFAULT 'All Kasoa Towns',
   -- Optional geo-fence radius in kilometres around the target area
   radius_km      INTEGER,
   -- Array of delivery channels used: sms, push, web
   channels       TEXT[] NOT NULL DEFAULT '{web}',
-  -- Foreign key linking to the admin user who broadcast this alert
+  -- Foreign key linking to the admin user who broadcast this notification
   issued_by      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  -- Timestamp of when the alert was broadcast
+  -- Timestamp of when the notification was broadcast
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ── RESPONSE LOGS TABLE ───────────────────────────────────────────────────────
--- Tracks every action taken on an incident for full audit trail
+-- Tracks every action taken on a community issue for full audit trail
 CREATE TABLE IF NOT EXISTS response_logs (
   -- Unique identifier generated automatically for each log entry
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  -- The incident this log entry relates to
+  -- The community issue this log entry relates to
   incident_id  UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
   -- The responder or admin who performed this action
   responder_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  -- Description of the action taken e.g. "Status changed to dispatched"
+  -- Description of the action taken e.g. "Status changed to assigned"
   action       TEXT NOT NULL,
   -- Timestamp of when this action occurred
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ── INDEXES ───────────────────────────────────────────────────────────────────
--- Index on incident status to speed up filtering by new/dispatched/resolved
+-- Index on issue status to speed up filtering by new/assigned/in_progress/resolved
 CREATE INDEX IF NOT EXISTS idx_incidents_status   ON incidents(status);
--- Index on incident type to speed up filtering by flood/fire/accident
+-- Index on issue type to speed up filtering by category (e.g. burst_water_pipe)
 CREATE INDEX IF NOT EXISTS idx_incidents_type     ON incidents(type);
--- Index on Kasoa town to speed up filtering incidents by community area
+-- Index on Kasoa town to speed up filtering issues by community area
 CREATE INDEX IF NOT EXISTS idx_incidents_region   ON incidents(region);
--- Index on created_at descending so the most recent incidents load first
+-- Index on created_at descending so the most recent issues load first
 CREATE INDEX IF NOT EXISTS idx_incidents_created  ON incidents(created_at DESC);
--- Index on alert target region to speed up fetching alerts for a specific town
+-- Index on notification target region to speed up fetching notifications for a specific town
 CREATE INDEX IF NOT EXISTS idx_alerts_region      ON alerts(target_region);
--- Index to quickly fetch all response logs for a given incident
+-- Index to quickly fetch all response logs for a given community issue
 CREATE INDEX IF NOT EXISTS idx_response_logs_inc  ON response_logs(incident_id);
